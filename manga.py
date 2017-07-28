@@ -1,18 +1,28 @@
 from BeautifulSoup import BeautifulSoup
 import cfscrape
 import re
-import wget
+import urllib2
 from Crypto.Hash import SHA256
 from Crypto.Cipher import AES
 from base64 import b64decode
 import binascii
 import os
+import time
 
 chapter_links = []
 def ensure_dir(filepath):
 	directory = os.path.dirname(filepath)
 	if not os.path.exists(directory):
 		os.makedirs(directory)
+def download(url_link,filepath):
+	try:
+		with open(filepath,'wb') as output:
+			output.write(urllib2.urlopen(url_link).read())
+	except :
+		#whenever there is a disconnection
+		time.sleep(5)
+		download(url_link,filepath)
+
 
 def chapters(base_url,manga_name):
 	chapters = len(chapter_links)
@@ -29,7 +39,16 @@ def chapters(base_url,manga_name):
 		for url in encrypted_urls:
 			result = new_decoder(url)
 			if (not os.path.isfile(filepath+result[-7:])):
-				wget.download(result,filepath+result[-7:])
+				download(result,filepath+result[-7:])
+
+def connection(url,seconds = 5):
+	try:
+		soup = BeautifulSoup(scraper.get(thisurl).content)
+		return soup
+	except:
+		print 'No connection, retrying in '+str(seconds)+' seconds'
+		time.sleep(seconds)
+		connection(url,seconds)
 
 def new_decoder(url):
 	#from https://gist.github.com/nhanb/74542c36d3dcc5dde4e90b34437fb523
@@ -49,9 +68,11 @@ scraper = cfscrape.create_scraper()
 thisurl = raw_input('Enter the manga link: ')
 
 #Feed HTML file into parser
-soup = BeautifulSoup(scraper.get(thisurl).content)
+soup = connection(thisurl)
 manga_name = soup.find('link', {'rel': 'alternate'})['title'][:-6]
-for item in soup.findAll('a',href=re.compile('/Manga/'+manga_name)):
+_manga_name = thisurl[27:]
+print _manga_name
+for item in soup.findAll('a',href=re.compile('/Manga/'+_manga_name)):
 	if '?' in item['href']:
 		chapter_links.append(item['href'])
 
