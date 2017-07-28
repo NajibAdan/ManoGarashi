@@ -32,7 +32,7 @@ def chapters(base_url,manga_name):
 		ensure_dir(filepath)
 		url = base_url+i
 		print url
-		html = scraper.get(url).content
+		html = connection(url)
 		soup = BeautifulSoup(html)
 		pat = re.compile('lstImages\.push\(wrapKA\("(.+?)"\)\);')
 		encrypted_urls = pat.findall(html)
@@ -43,7 +43,7 @@ def chapters(base_url,manga_name):
 
 def connection(url,seconds = 5):
 	try:
-		soup = BeautifulSoup(scraper.get(thisurl).content)
+		soup = scraper.get(thisurl).content
 		return soup
 	except:
 		print 'No connection, retrying in '+str(seconds)+' seconds'
@@ -68,7 +68,7 @@ scraper = cfscrape.create_scraper()
 thisurl = raw_input('Enter the manga link: ')
 
 #Feed HTML file into parser
-soup = connection(thisurl)
+soup = BeautifulSoup(connection(thisurl))
 manga_name = soup.find('link', {'rel': 'alternate'})['title'][:-6]
 _manga_name = thisurl[27:]
 print _manga_name
