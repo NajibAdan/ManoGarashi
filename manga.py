@@ -5,7 +5,6 @@ import urllib2
 from Crypto.Hash import SHA256
 from Crypto.Cipher import AES
 from base64 import b64decode
-import binascii
 import os
 import time
 
@@ -23,27 +22,29 @@ def download(url_link,filepath):
 		time.sleep(5)
 		download(url_link,filepath)
 
-
 def chapters(base_url,manga_name):
 	chapters = len(chapter_links)
 	for i in chapter_links:
 		chapters = i[i.rfind('/')+1:i.rfind('?id')]
 		filepath = manga_name +'\\'+chapters + '\\'
-		ensure_dir(filepath)
 		url = base_url+i
 		print url
 		html = connection(url)
 		soup = BeautifulSoup(html)
 		pat = re.compile('lstImages\.push\(wrapKA\("(.+?)"\)\);')
 		encrypted_urls = pat.findall(html)
+		page_counter = 0
+		ensure_dir(filepath)
 		for url in encrypted_urls:
+			page_counter += 1
 			result = new_decoder(url)
-			if (not os.path.isfile(filepath+result[-7:])):
-				download(result,filepath+result[-7:])
+			extension = result[-4:]
+			if (not os.path.isfile(filepath+str(page_counter)+extension)):
+				download(result,filepath+str(page_counter)+extension)
 
 def connection(url,seconds = 5):
 	try:
-		soup = scraper.get(thisurl).content
+		soup = scraper.get(url).content
 		return soup
 	except:
 		print 'No connection, retrying in '+str(seconds)+' seconds'
