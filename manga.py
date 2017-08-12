@@ -2,26 +2,35 @@ from BeautifulSoup import BeautifulSoup
 import cfscrape
 import re
 import urllib2
+import urllib
 from Crypto.Hash import SHA256
 from Crypto.Cipher import AES
 from base64 import b64decode
 import os
 import time
-
+FTYPES = {
+	'/JPEG' : '.jpg',
+    '/GIF' : '.gif',
+    '/PNG' : '.png',
+	}
 chapter_links = []
 scraper = cfscrape.create_scraper()
-#ensures the chapter directory exists, if not it creates a new one
-def ensure_dir(filepath):
-	directory = os.path.dirname(filepath)
+#ensures the chapter directory exists and changes the directory, if not it creates a new one
+def ensure_dir(directory):
 	if not os.path.exists(directory):
 		os.makedirs(directory)
+	os.chdir(directory)
+#checks the number of files in a folder
+def queue(filepath):
+	num_files = len([f for f in os.listdir(filepath) if os.path.isfile(os.path.join(filepath, f))])
+	return num_files
 #downloads the pages
 def download(url_link,filepath):
 	try:
-		with open(filepath,'wb') as output:
-			output.write(urllib2.urlopen(url_link).read())
+		urllib.urlretrieve(url_link,filepath)
 	except :
 		#whenever there is a disconnection
+		print 'ping'
 		time.sleep(5)
 		download(url_link,filepath)
 #searches for the manga
@@ -43,25 +52,44 @@ def search(search_term):
 		links(linksearchobj[choice-1])
 	else:
 		links(linksearchobj[0])
+#using the content-type headers, it tries to guess the extension of the page
+def extension(url):
+	try:
+		page = urllib2.urlopen(url)
+		content = page.headers.getheader('content-type')
+		ext = content[content.rfind('/'):].upper()
+		ext = FTYPES[ext]
+		return ext
+	except:
+		#there is a weird bug with some chapter pages where you can't find the content-type
+		#if it ever happens the extension will default to .jpg
+		return '.jpg'
 
 def chapters(manga_name):
-	for i in chapter_links:
+	ensure_dir(manga_name)
+	for i in reversed(chapter_links):
 		chapter = i[i.rfind('/')+1:i.rfind('?id')]
-		filepath = manga_name +'\\'+chapter + '\\'
+		ensure_dir(chapter)
 		url = 'http://kissmanga.com'+i
-		print url
+		print 'Downloading ' + chapter
 		html = connection(url)
 		soup = BeautifulSoup(html)
 		pat = re.compile('lstImages\.push\(wrapKA\("(.+?)"\)\);')
 		encrypted_urls = pat.findall(html)
 		page_counter = 0
-		ensure_dir(filepath)
-		for url in encrypted_urls:
-			page_counter += 1
-			result = new_decoder(url)
-			extension = result[-4:]
-			if (not os.path.isfile(filepath+str(page_counter)+extension)):
-				download(result,filepath+str(page_counter)+extension)
+		#checks if the chapter has been downloaded
+		if queue(os.getcwd()) == len(encrypted_urls):
+			print chapter + ' has already been downloaded. Skipping it.'
+			continue
+		else:
+			#if it has been downloaded it initiates the download of the chapter
+			for url in encrypted_urls:
+				page_counter += 1
+				result = new_decoder(url)
+				ext = extension(result)
+				if (not os.path.isfile(str(page_counter)+ext)):
+					download(result,str(page_counter)+ext)
+			os.chdir('..')
 
 def connection(url,Post = False,data=None,seconds = 5):
 	try:
